@@ -6,6 +6,8 @@ SQL backend (sqlite3, pymysql, psycopg2). A consuming source must provide the
 SELECT, TABLE_NAME and SQL expression classes plus a `schema` attribute.
 """
 
+# pylint: disable=too-many-locals
+
 
 class SOURCE:
     """
