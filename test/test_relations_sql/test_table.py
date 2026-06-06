@@ -22,7 +22,8 @@ class Meta(relations.Model):
     people = set
     stuff = list
     things = dict, {"extract": "for__0____1"}
-    push = str, {"inject": "stuff___1__relations.io____1"}
+    push = str, {"inject": "stuff___1__relations.io____1"},
+    tied = str, {"store": False}
 
     INDEX = "spend"
 
@@ -141,7 +142,7 @@ CREATE UNIQUE `meta_name` ON `meta` (`name`);
         ddl = TABLE(migration={
             "name": "yep",
             "fields": {
-                "add": Meta.thy().define()["fields"][-2:]
+                "add": Meta.thy().define()["fields"][-3:]
             }
         })
 
@@ -172,6 +173,9 @@ CREATE UNIQUE `meta_name` ON `meta` (`name`);
                         },
                         "things": {
                             "store": "thingies"
+                        },
+                        "tied": {
+                            "name": "ties"
                         }
                     }
                 }
@@ -254,7 +258,8 @@ CREATE UNIQUE `meta_name` ON `meta` (`name`);
                 "fields": {
                     "remove": [
                         "things",
-                        "push"
+                        "push",
+                        "tied"
                     ]
                 }
             },
@@ -470,7 +475,7 @@ STORE `dreaming`.`evil` TO `dreaming`.`good`;
         ddl = TABLE(
             migration={
                 "fields": {
-                    "add": Meta.thy().define()["fields"][-2:]
+                    "add": Meta.thy().define()["fields"][-3:]
                 }
             },
             definition=Simple.thy().define()
