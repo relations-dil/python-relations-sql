@@ -67,7 +67,7 @@ class TABLE(relations_sql.DDL):
         indexes = []
 
         for migration in self.migration["fields"]:
-            if "inject" in migration:
+            if "inject" in migration or not migration["store"]:
                 continue
             columns.append(self.COLUMN(migration=migration))
             if "extract" in migration:
@@ -131,7 +131,7 @@ class TABLE(relations_sql.DDL):
 
         for migration in self.migration.get("fields", {}).get("add", {}):
 
-            if "inject" in migration:
+            if "inject" in migration or not migration["store"]:
                 continue
 
             columns.append(self.COLUMN(migration=migration, added=True))
@@ -151,7 +151,7 @@ class TABLE(relations_sql.DDL):
             migration = self.migration["fields"]["change"][field]
             definition = self.field(field)
 
-            if "inject" in definition:
+            if "inject" in definition or not definition["store"]:
                 continue
 
             if any(attr in migration for attr in ["name", "store", "kind", "default", "none"]):
@@ -212,7 +212,7 @@ class TABLE(relations_sql.DDL):
 
             definition = self.field(field)
 
-            if "inject" in definition:
+            if "inject" in definition or not definition["store"]:
                 continue
 
             columns.append(self.COLUMN(definition=definition))

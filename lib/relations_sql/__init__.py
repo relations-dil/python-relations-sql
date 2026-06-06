@@ -12,3 +12,4 @@ from relations_sql.ddl import *
 from relations_sql.column import *
 from relations_sql.index import *
 from relations_sql.table import *
+from relations_sql.source import *
