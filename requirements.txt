@@ -1,6 +1,5 @@
 overscore==0.1.1
-# relations-dil==0.6.14
-relations-dil @ git+https://github.com/relations-dil/python-relations@7b83a060fcd41ee2ae81bb63aae5fc6a7e530cfa
+relations-dil==0.6.14
 ptvsd==4.3.2
 coverage==5.2.1
 pylint==2.5.3
