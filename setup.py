@@ -20,7 +20,8 @@ setup(
         'relations_sql.ddl',
         'relations_sql.column',
         'relations_sql.index',
-        'relations_sql.table'
+        'relations_sql.table',
+        'relations_sql.source'
     ],
     install_requires=[
         'overscore==0.1.1'
