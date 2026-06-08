@@ -1,5 +1,5 @@
 overscore==0.1.1
-relations-dil==0.6.14
+relations-dil==0.6.15
 ptvsd==4.3.2
 coverage==5.2.1
 pylint==2.5.3

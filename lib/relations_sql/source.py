@@ -64,3 +64,47 @@ class SOURCE:
                 query.WHERE(**{f"{model._id}__{'not_in' if negate else 'in'}": subquery})
 
             field.criteria = {}
+
+        self.collate_attr_query(model, query)
+
+    def collate_attr_query(self, model, query):
+        """
+        Resolves sibling-attribute criteria (bro__name=..., grouped per relation on model._ties)
+        into a flat join: the tie table and the sibling table are added to the outer query's FROM
+        and the model->tie + tie->sibling joins plus the sibling criteria to its WHERE. Every
+        sibling field operator (name, name__like, name__in, name__gt, ...) lands in WHERE, and
+        criteria on the same relation filter the same tied sibling. Because a model tied to several
+        matching siblings would repeat, it is marked _distinct (count and retrieve honor it with
+        COUNT(DISTINCT id) / SELECT DISTINCT).
+        """
+
+        model_store = getattr(model, "STORE", None) or model.NAME
+        model._distinct = False
+
+        for name, criteria in getattr(model, "_ties", {}).items():
+
+            relation = model.SISTERS[name] if name in model.SISTERS else model.BROTHERS[name]
+
+            if name in model.SISTERS:
+                tie_self_ref, tie_sibling_ref = relation.tie_brother_ref, relation.tie_sister_ref
+                sibling, sibling_id = relation.Sister.thy(), relation.sister_id
+            else:
+                tie_self_ref, tie_sibling_ref = relation.tie_sister_ref, relation.tie_brother_ref
+                sibling, sibling_id = relation.Brother.thy(), relation.brother_id
+
+            tie = relation.Tie.thy()
+            tie_store = getattr(tie, "STORE", None) or tie.NAME
+            sib_store = getattr(sibling, "STORE", None) or sibling.NAME
+
+            tie_table = self.TABLE_NAME(tie_store, schema=getattr(tie, "SCHEMA", None) or self.schema)
+            sib_table = self.TABLE_NAME(sib_store, schema=getattr(sibling, "SCHEMA", None) or self.schema)
+
+            # model -> tie -> sibling joins, then the sibling field criteria (same tied sibling)
+            model_join = self.OP(**{f"{model_store}.{model._id}": self.COLUMN_NAME(tie_self_ref, table=tie_store)})
+            sibling_join = self.OP(**{f"{tie_store}.{tie_sibling_ref}": self.COLUMN_NAME(sibling_id, table=sib_store)})
+            matches = [self.OP(**{f"{sib_store}.{predicate}": value}) for predicate, value in criteria.items()]
+
+            query.FROM(tie_table, sib_table).WHERE(model_join, sibling_join, *matches)
+            model._distinct = True
+
+        model._ties = {}

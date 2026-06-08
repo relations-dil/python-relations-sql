@@ -6,6 +6,7 @@ import relations_sql
 
 import test_query
 import test_expression
+import test_criteria
 
 
 class Source(relations_sql.SOURCE):
@@ -15,6 +16,9 @@ class Source(relations_sql.SOURCE):
 
     SELECT = test_query.SELECT
     TABLE_NAME = test_expression.TABLE_NAME
+    COLUMN_NAME = test_expression.COLUMN_NAME
+    OP = test_criteria.OP
+    OR = test_criteria.OR
     SQL = relations_sql.SQL
     schema = "test"
 
@@ -51,7 +55,7 @@ class TestSOURCE(unittest.TestCase):
 
     def sql(self, model):
 
-        query = test_query.SELECT("*").FROM("sis")
+        query = test_query.SELECT("*").FROM(getattr(model, "STORE", None) or model.NAME)
         self.source.collate_ties_query(model, query)
         query.generate()
         return " ".join(query.sql.split())
@@ -100,3 +104,49 @@ class TestSOURCE(unittest.TestCase):
 
         # no tie criteria -> query untouched
         self.assertNotIn("sis_bro", self.sql(Sis.many(name="x")))
+
+    def test_collate_attr_query(self):
+
+        # bro__name -> FLAT join: tie + sibling added to FROM, joins + criteria in WHERE, NO subquery
+        flat = self.sql(Sis.many(bro__name="Tom"))
+        self.assertIn(
+            "FROM `sis`,`test`.`sis_bro`,`test`.`bro` "
+            "WHERE `sis`.`id`=(`sis_bro`.`sis_id`) AND `sis_bro`.`bro_id`=(`bro`.`id`) AND `bro`.`name`=%s",
+            flat
+        )
+        self.assertNotIn("(SELECT", flat)
+
+        # a field operator lands straight on the sibling: in (any of), like
+        self.assertIn(
+            "AND `bro`.`name` IN (%s,%s)",
+            self.sql(Sis.many(bro__name__in=["Tom", "Dick"]))
+        )
+        self.assertIn(
+            "AND `bro`.`name` LIKE %s",
+            self.sql(Sis.many(bro__name__like="ar"))
+        )
+
+        # criteria on the same relation filter the same tied sibling (one join, AND'd)
+        self.assertIn(
+            "FROM `sis`,`test`.`sis_bro`,`test`.`bro` "
+            "WHERE `sis`.`id`=(`sis_bro`.`sis_id`) AND `sis_bro`.`bro_id`=(`bro`.`id`) "
+            "AND `bro`.`name`=%s AND `bro`.`id`>%s",
+            self.sql(Sis.many(bro__name="Tom", bro__id__gt=5))
+        )
+
+        # symmetric: brothers filtered by a tied sister's attribute
+        self.assertIn(
+            "FROM `bro`,`test`.`sis_bro`,`test`.`sis` "
+            "WHERE `bro`.`id`=(`sis_bro`.`bro_id`) AND `sis_bro`.`sis_id`=(`sis`.`id`) AND `sis`.`name`=%s",
+            self.sql(Bro.many(sis__name="Sue"))
+        )
+
+        # a flat attr join marks the model for DISTINCT (count/retrieve dedupe)
+        joined = Sis.many(bro__name="Tom")
+        self.sql(joined)
+        self.assertTrue(getattr(joined, "_distinct", False))
+
+        # no attr criteria -> query untouched, not marked
+        plain = Sis.many(bro_id__has=1)
+        self.assertNotIn("`bro`.`name`", self.sql(plain))
+        self.assertFalse(getattr(plain, "_distinct", False))
