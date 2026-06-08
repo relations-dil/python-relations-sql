@@ -6,6 +6,7 @@ import relations_sql
 
 import test_query
 import test_expression
+import test_criteria
 
 
 class Source(relations_sql.SOURCE):
@@ -15,6 +16,9 @@ class Source(relations_sql.SOURCE):
 
     SELECT = test_query.SELECT
     TABLE_NAME = test_expression.TABLE_NAME
+    COLUMN_NAME = test_expression.COLUMN_NAME
+    OP = test_criteria.OP
+    OR = test_criteria.OR
     SQL = relations_sql.SQL
     schema = "test"
 
@@ -51,7 +55,7 @@ class TestSOURCE(unittest.TestCase):
 
     def sql(self, model):
 
-        query = test_query.SELECT("*").FROM("sis")
+        query = test_query.SELECT("*").FROM(getattr(model, "STORE", None) or model.NAME)
         self.source.collate_ties_query(model, query)
         query.generate()
         return " ".join(query.sql.split())
@@ -100,3 +104,60 @@ class TestSOURCE(unittest.TestCase):
 
         # no tie criteria -> query untouched
         self.assertNotIn("sis_bro", self.sql(Sis.many(name="x")))
+
+    def test_collate_attr_query(self):
+
+        # bro__name -> FLAT join: tie + sibling added to FROM, joins + criteria in WHERE, NO subquery
+        flat = self.sql(Sis.many(bro__name="Tom"))
+        self.assertIn(
+            "FROM `sis`,`test`.`sis_bro`,`test`.`bro` "
+            "WHERE `sis`.`id`=(`sis_bro`.`sis_id`) AND `sis_bro`.`bro_id`=(`bro`.`id`) AND `bro`.`name` IN (%s)",
+            flat
+        )
+        self.assertNotIn("(SELECT", flat)
+
+        # any -> IN over the requested values, still flat
+        self.assertIn(
+            "AND `bro`.`name` IN (%s,%s)",
+            self.sql(Sis.many(bro__name__any=["Tom", "Dick"]))
+        )
+
+        # a sibling field operator (like) is OR'd per value, still flat
+        self.assertIn(
+            "AND (`bro`.`name` LIKE %s OR `bro`.`name` LIKE %s)",
+            self.sql(Sis.many(bro__name__like__any=["ar", "om"]))
+        )
+
+        # all -> the exception: id IN subquery with GROUP BY / HAVING COUNT(DISTINCT attr)
+        self.assertIn(
+            "`id` IN (SELECT `sis_bro`.`sis_id` FROM `test`.`sis_bro`,`test`.`bro` "
+            "WHERE `sis_bro`.`bro_id`=(`bro`.`id`) AND `bro`.`name` IN (%s,%s) "
+            "GROUP BY `sis_bro`.`sis_id` HAVING COUNT(DISTINCT bro.name) = 2)",
+            self.sql(Sis.many(bro__name__all=["Tom", "Dick"]))
+        )
+
+        # negation -> the exception: id NOT IN subquery (a flat predicate would be wrong)
+        self.assertIn(
+            "`id` NOT IN (SELECT `sis_bro`.`sis_id` FROM `test`.`sis_bro`,`test`.`bro` "
+            "WHERE `sis_bro`.`bro_id`=(`bro`.`id`) AND `bro`.`name` IN (%s))",
+            self.sql(Sis.many(bro__name__not_has="Tom"))
+        )
+
+        # symmetric: brothers filtered by a tied sister's attribute (flat)
+        self.assertIn(
+            "FROM `bro`,`test`.`sis_bro`,`test`.`sis` "
+            "WHERE `bro`.`id`=(`sis_bro`.`bro_id`) AND `sis_bro`.`sis_id`=(`sis`.`id`) AND `sis`.`name` IN (%s)",
+            self.sql(Bro.many(sis__name="Sue"))
+        )
+
+        # a flat join marks the model for DISTINCT (count/retrieve dedupe); a subquery does not
+        joined = Sis.many(bro__name="Tom")
+        self.sql(joined)
+        self.assertTrue(getattr(joined, "_distinct", False))
+
+        aggregate = Sis.many(bro__name__all=["Tom", "Dick"])
+        self.sql(aggregate)
+        self.assertFalse(getattr(aggregate, "_distinct", False))
+
+        # no attr criteria -> query untouched
+        self.assertNotIn("`bro`.`name`", self.sql(Sis.many(bro_id__has=1)))

@@ -7,7 +7,7 @@ with open("README.md", "r") as readme_file:
 
 setup(
     name="relations-sql",
-    version="0.6.8",
+    version="0.6.9",
     package_dir = {'': 'lib'},
     py_modules = [
         'relations_sql',
