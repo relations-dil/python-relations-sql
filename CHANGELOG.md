@@ -5,6 +5,13 @@ All notable changes to python-relations-sql are recorded here, newest first. For
 
 ## [Unreleased]
 
+### Added
+- Release tooling, the same as relations-dil's (relations-dil/python-relations#77): `make new` starts a release, `make version` sets the version, `make release-check` says where a release is up to and what would stop it, `make release` does what's left (checks, TestPyPI and a clean install from it, PyPI, the tag), `make dist-check` builds and checks the distributions, and `make test-release` tests the scripts against a throwaway repo and fake indexes. The work is in `scripts/`.
+- A `VERSION` file as the one place the version is set: the `Makefile` reads it and mounts it, `testpypi` and `pypi` pass it as `BUILD_VERSION`, and `setup.py` reads `BUILD_VERSION` or the file.
+
+### Changed
+- `testpypi` and `pypi` run in the current `python` image with `build` and `twine` installed on the fly, so the custom `gaf3/pypi` image is no longer used.
+
 ## [0.6.9] - 2026-06-08
 
 - Added `collate_attr_query` to `SOURCE`, which turns sibling-attribute criteria on many-to-many ties into joins on the tie and sibling tables in the outer query.
