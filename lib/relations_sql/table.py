@@ -77,8 +77,15 @@ class TABLE(relations_sql.DDL):
 
         table = {} if self.INDEXES else {"table": self.migration["store"], "schema": self.migration.get("schema")}
 
+        # An auto id is already the key through its column, any other id (a string) needs one
+
         if self.migration.get('id') is not None and self.PRIMARY:
-            columns.append(relations_sql.SQL(self.PRIMARY % self.quote(self.migration['id'])))
+            ident = {}
+            for field in self.migration["fields"]:
+                if field["name"] == self.migration['id']:
+                    ident = field
+            if not ident.get("auto"):
+                columns.append(relations_sql.SQL(self.PRIMARY % self.quote(ident.get("store", self.migration['id']))))
 
         for index in sorted(self.migration.get("index", {})):
             indexes.append(self.INDEX(name=index, columns=self.migration["index"][index], **table))
@@ -154,7 +161,7 @@ class TABLE(relations_sql.DDL):
             if "inject" in definition or not definition["store"]:
                 continue
 
-            if any(attr in migration for attr in ["name", "store", "kind", "default", "none"]):
+            if any(attr in migration for attr in ["name", "store", "kind", "default", "none", "auto"]):
                 columns.append(self.COLUMN(migration=migration, definition=definition))
 
             if "extract" in migration:

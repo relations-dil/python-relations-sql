@@ -14,6 +14,14 @@ class Simple(relations.Model):
     id = int
     name = str
 
+class Slug(relations.Model):
+    id = str
+    name = str
+
+class Stored(relations.Model):
+    id = str, {"store": "_id"}
+    name = str
+
 class Meta(relations.Model):
     id = int
     name = str
@@ -93,6 +101,46 @@ CREATE INDEX `meta_spend` ON `meta` (`spend`);
 CREATE UNIQUE `meta_name` ON `meta` (`name`);
 """)
 
+    def test_create_primary(self):
+
+        # a string id is the key
+
+        ddl = INSIDE(Slug.thy().define())
+        ddl.args = []
+
+        ddl.create()
+        self.assertEqual(ddl.sql, """CREATE TABLE IF NOT EXISTS `slug` (`id` STR NOT NULL,`name` STR,PRIMARY (`id`));\n""")
+
+        # the key is the store of the id, not its name
+
+        ddl = INSIDE(Stored.thy().define())
+        ddl.args = []
+
+        ddl.create()
+        self.assertEqual(ddl.sql, """CREATE TABLE IF NOT EXISTS `stored` (`_id` STR NOT NULL,`name` STR,PRIMARY (`_id`));\n""")
+
+        # an auto id is already the key in the dialects that say so with its column, so no second one
+
+        definition = Simple.thy().define()
+        definition["fields"][0]["auto"] = True
+
+        ddl = INSIDE(definition)
+        ddl.args = []
+
+        ddl.create()
+        self.assertEqual(ddl.sql, """CREATE TABLE IF NOT EXISTS `simple` (`id` AUTO,`name` STR NOT NULL,UNIQUE `name` (`name`));\n""")
+
+        # no id, no key
+
+        definition = Simple.thy().define()
+        del definition["id"]
+
+        ddl = INSIDE(definition)
+        ddl.args = []
+
+        ddl.create()
+        self.assertEqual(ddl.sql, """CREATE TABLE IF NOT EXISTS `simple` (`id` INT,`name` STR NOT NULL,UNIQUE `name` (`name`));\n""")
+
     def test_add(self):
 
         ddl = INSIDE(Simple.thy().define())
@@ -157,6 +205,31 @@ CREATE UNIQUE `meta_name` ON `meta` (`name`);
         self.assertEqual(columns[1].migration["store"], "things__for__0____1")
         self.assertEqual(columns[1].migration["kind"], "str")
         self.assertTrue(columns[1].added)
+
+    def test_fields_change_auto(self):
+
+        ddl = TABLE(
+            migration={
+                "fields": {
+                    "change": {
+                        "id": {
+                            "auto": False
+                        }
+                    }
+                }
+            },
+            definition={
+                "name": "yep",
+                "fields": Meta.thy().define()["fields"]
+            }
+        )
+
+        columns = []
+
+        ddl.fields_change(columns)
+        self.assertEqual(len(columns), 1)
+        self.assertFalse(columns[0].migration["auto"])
+        self.assertEqual(columns[0].definition["store"], "id")
 
     def test_fields_change(self):
 
