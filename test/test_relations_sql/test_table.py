@@ -105,8 +105,6 @@ CREATE INDEX `meta_spend` ON `meta` (`spend`);
 CREATE UNIQUE `meta_name` ON `meta` (`name`);
 """)
 
-    def test_create_primary(self):
-
         # a string id is the key
 
         ddl = INSIDE(Slug.thy().define())
@@ -224,31 +222,6 @@ CREATE UNIQUE `meta_name` ON `meta` (`name`);
         self.assertEqual(columns[1].migration["kind"], "str")
         self.assertTrue(columns[1].added)
 
-    def test_fields_change_auto(self):
-
-        ddl = TABLE(
-            migration={
-                "fields": {
-                    "change": {
-                        "id": {
-                            "auto": False
-                        }
-                    }
-                }
-            },
-            definition={
-                "name": "yep",
-                "fields": Meta.thy().define()["fields"]
-            }
-        )
-
-        columns = []
-
-        ddl.fields_change(columns)
-        self.assertEqual(len(columns), 1)
-        self.assertFalse(columns[0].migration["auto"])
-        self.assertEqual(columns[0].definition["store"], "id")
-
     def test_fields_change(self):
 
         ddl = TABLE(
@@ -341,6 +314,29 @@ CREATE UNIQUE `meta_name` ON `meta` (`name`);
         self.assertEqual(columns[0].migration["kind"], "float")
         self.assertEqual(columns[0].definition["store"], "things__for__0____1")
         self.assertEqual(columns[0].definition["kind"], "str")
+
+        ddl = TABLE(
+            migration={
+                "fields": {
+                    "change": {
+                        "id": {
+                            "auto": False
+                        }
+                    }
+                }
+            },
+            definition={
+                "name": "yep",
+                "fields": Meta.thy().define()["fields"]
+            }
+        )
+
+        columns = []
+
+        ddl.fields_change(columns)
+        self.assertEqual(len(columns), 1)
+        self.assertFalse(columns[0].migration["auto"])
+        self.assertEqual(columns[0].definition["store"], "id")
 
     def test_fields_remove(self):
 
