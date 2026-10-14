@@ -22,6 +22,7 @@ class TABLE(relations_sql.DDL):
     SCHEMA = None
     STORE = None
     PRIMARY = None
+    PRIMARY_AUTO = True # Whether an auto id still gets PRIMARY, False where the auto column is already the key
 
     def name(self, state="migration"):
         """
@@ -77,14 +78,14 @@ class TABLE(relations_sql.DDL):
 
         table = {} if self.INDEXES else {"table": self.migration["store"], "schema": self.migration.get("schema")}
 
-        # An auto id is already the key through its column, any other id (a string) needs one
+        # Any id needs a key by its store, unless the dialect's auto column already is one
 
         if self.migration.get('id') is not None and self.PRIMARY:
             ident = {}
             for field in self.migration["fields"]:
                 if field["name"] == self.migration['id']:
                     ident = field
-            if not ident.get("auto"):
+            if self.PRIMARY_AUTO or not ident.get("auto"):
                 columns.append(relations_sql.SQL(self.PRIMARY % self.quote(ident.get("store", self.migration['id']))))
 
         for index in sorted(self.migration.get("index", {})):

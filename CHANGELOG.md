@@ -16,7 +16,7 @@ All notable changes to python-relations-sql are recorded here, newest first. For
 ## [0.6.10] - 2026-10-14
 
 ### Changed
-- `TABLE.create` writes the primary key for any id that isn't `auto` (a string id from relations-dil 0.6.18), using the id field's store, and leaves it out for an `auto` id, whose column is already the key. Dialects that set `PRIMARY` get the key for string ids, and an int id is unchanged.
+- `TABLE.create` writes the primary key by the id field's store, not its name. `PRIMARY_AUTO` says whether an `auto` id still gets one, `True` unless a dialect (SQLite) says its auto column is already the key. Dialects that set `PRIMARY` get the key for a string id (an id that isn't `auto`, from relations-dil 0.6.18), and an int id is unchanged.
 - `TABLE.fields_change` looks at `auto` too, so a migration that only changes `auto` produces a column change.
 
 ## [0.6.9] - 2026-06-08

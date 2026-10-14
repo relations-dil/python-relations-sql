@@ -55,6 +55,10 @@ class OUTSIDE(TABLE):
 
     INDEXES = False
 
+class SELF(INSIDE):
+
+    PRIMARY_AUTO = False
+
 class LOCKED(TABLE):
 
     SCHEMA = None
@@ -119,7 +123,7 @@ CREATE UNIQUE `meta_name` ON `meta` (`name`);
         ddl.create()
         self.assertEqual(ddl.sql, """CREATE TABLE IF NOT EXISTS `stored` (`_id` STR NOT NULL,`name` STR,PRIMARY (`_id`));\n""")
 
-        # an auto id is already the key in the dialects that say so with its column, so no second one
+        # an auto id keeps its key unless the dialect's auto column already is the key
 
         definition = Simple.thy().define()
         definition["fields"][0]["auto"] = True
@@ -128,7 +132,21 @@ CREATE UNIQUE `meta_name` ON `meta` (`name`);
         ddl.args = []
 
         ddl.create()
+        self.assertEqual(ddl.sql, """CREATE TABLE IF NOT EXISTS `simple` (`id` AUTO,`name` STR NOT NULL,PRIMARY (`id`),UNIQUE `name` (`name`));\n""")
+
+        ddl = SELF(definition)
+        ddl.args = []
+
+        ddl.create()
         self.assertEqual(ddl.sql, """CREATE TABLE IF NOT EXISTS `simple` (`id` AUTO,`name` STR NOT NULL,UNIQUE `name` (`name`));\n""")
+
+        # a string id gets one either way
+
+        ddl = SELF(Slug.thy().define())
+        ddl.args = []
+
+        ddl.create()
+        self.assertEqual(ddl.sql, """CREATE TABLE IF NOT EXISTS `slug` (`id` STR NOT NULL,`name` STR,PRIMARY (`id`));\n""")
 
         # no id, no key
 
