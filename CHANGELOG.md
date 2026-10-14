@@ -13,6 +13,12 @@ All notable changes to python-relations-sql are recorded here, newest first. For
 - Every `docker run` in the `Makefile` uses `--rm`, and a replaced database container is removed with its volume (`docker rm --force -v`), so builds and test runs leave no stopped containers or volumes behind.
 - `testpypi` and `pypi` run in the current `python` image with `build` and `twine` installed on the fly, so the custom `gaf3/pypi` image is no longer used.
 
+## [0.6.10] - 2026-10-14
+
+### Changed
+- `TABLE.create` writes the primary key for any id that isn't `auto` (a string id from relations-dil 0.6.18), using the id field's store, and leaves it out for an `auto` id, whose column is already the key. Dialects that set `PRIMARY` get the key for string ids, and an int id is unchanged.
+- `TABLE.fields_change` looks at `auto` too, so a migration that only changes `auto` produces a column change.
+
 ## [0.6.9] - 2026-06-08
 
 - Added `collate_attr_query` to `SOURCE`, which turns sibling-attribute criteria on many-to-many ties into joins on the tie and sibling tables in the outer query.
