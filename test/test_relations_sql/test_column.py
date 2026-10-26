@@ -149,6 +149,20 @@ class TestCOLUMN(unittest.TestCase):
         ddl.kind(sql)
         self.assertEqual(sql, ["""KIND `id` AS FLOAT"""])
 
+        # only the length changing keeps the kind it has
+
+        field = relations.Field(str, store="id", length=32)
+
+        definition = {
+            "name": "id",
+            "kind": "str",
+            "length": 64
+        }
+        ddl = COLUMN(field.define(), definition)
+        sql = []
+        ddl.kind(sql)
+        self.assertEqual(sql, ["""KIND `id` AS STR"""])
+
     def test_default(self):
 
         field = relations.Field(float, store="price", default=1.25)
@@ -236,6 +250,24 @@ SET NOT NONE `id`""")
     KIND `id` AS INT,
     SET DEFAULT `id` AS 1,
     SET NOT NONE `id`""")
+
+    def test_modify_length(self):
+
+        # a str changing only its length is a change of kind
+
+        definition = relations.Field(str, name="id", length=64).define()
+        ddl = COLUMN(migration={"length": 32}, definition=definition)
+
+        ddl.generate()
+        self.assertEqual(ddl.sql, """KIND `id` AS STR""")
+
+        # a length that isn't a str's isn't
+
+        definition = relations.Field(int, name="id").define()
+        ddl = COLUMN(migration={"length": 32}, definition=definition)
+
+        ddl.generate()
+        self.assertEqual(ddl.sql, """""")
 
     def test_drop(self):
 
