@@ -15,6 +15,9 @@ All notable changes to python-relations-sql are recorded here, newest first. For
 - Every `docker run` in the `Makefile` uses `--rm`, and a replaced database container is removed with its volume (`docker rm --force -v`), so builds and test runs leave no stopped containers or volumes behind.
 - `testpypi` and `pypi` run in the current `python` image with `build` and `twine` installed on the fly, so the custom `gaf3/pypi` image is no longer used.
 
+### Fixed
+- A str field that changes only its `length` is a column change: `modify` generates the kind change for it (the field's own kind when the migration doesn't have one), so the dialects can resize the column instead of generating nothing (relations-dil/python-relations-sql#30).
+
 ## [0.6.10] - 2026-10-14
 
 ### Changed

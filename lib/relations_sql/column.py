@@ -96,9 +96,10 @@ class COLUMN(relations_sql.DDL):
 
     def kind(self, sql):
         """
-        Modifies the kind
+        Modifies the kind, which a str changing only its length keeps
         """
-        sql.append(self.KIND % (self.name(), self.KINDS.get(self.migration['kind'], self.KINDS["json"])))
+        kind = self.migration.get('kind', self.definition['kind'])
+        sql.append(self.KIND % (self.name(), self.KINDS.get(kind, self.KINDS["json"])))
 
     def default(self, sql):
         """
@@ -134,7 +135,7 @@ class COLUMN(relations_sql.DDL):
         if "store" in self.migration:
             self.store(sql)
 
-        if "kind" in self.migration:
+        if "kind" in self.migration or ("length" in self.migration and self.definition["kind"] == "str"):
             self.kind(sql)
 
         if "default" in self.migration:
